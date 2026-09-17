@@ -20,9 +20,13 @@ public struct LoginView: View {
 
     public var body: some View {
         Form {
+            #if os(iOS)
             TextField("Username or email", text: $username)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+            #else
+            TextField("Username or email", text: $username)
+            #endif
             SecureField("Password", text: $password)
 
             Button("Sign in") {
@@ -72,10 +76,14 @@ public struct ForgotPasswordView: View {
     public var body: some View {
         Form {
             Section {
+                #if os(iOS)
                 TextField("Email address", text: $email)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
+                #else
+                TextField("Email address", text: $email)
+                #endif
 
                 Button("Send reset link") {
                     Task { await requestReset() }
