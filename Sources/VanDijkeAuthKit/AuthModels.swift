@@ -69,7 +69,7 @@ public struct PasswordResetLink: Equatable, Sendable {
     }
 }
 
-enum APIEnvelope<Value: Decodable>: Decodable {
+struct APIEnvelope<Value: Decodable>: Decodable {
     struct APIError: Decodable {
         let code: String?
         let message: String?
