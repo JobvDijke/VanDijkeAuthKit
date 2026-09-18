@@ -69,6 +69,30 @@ public struct PasswordResetLink: Equatable, Sendable {
     }
 }
 
+public struct AccountInviteLink: Equatable, Sendable {
+    public let token: String
+    public let clientID: String
+
+    public init?(url: URL, configuration: AuthConfiguration) {
+        guard url.scheme?.lowercased() == "https",
+              url.host?.lowercased() == configuration.resetLinkHost.lowercased(),
+              url.path == configuration.inviteLinkPath else {
+            return nil
+        }
+
+        let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        guard let token = queryItems.first(where: { $0.name == "token" })?.value,
+              !token.isEmpty,
+              let clientID = queryItems.first(where: { $0.name == "client_id" })?.value,
+              clientID == configuration.clientID else {
+            return nil
+        }
+
+        self.token = token
+        self.clientID = clientID
+    }
+}
+
 struct APIEnvelope<Value: Decodable>: Decodable {
     struct APIError: Decodable {
         let code: String?

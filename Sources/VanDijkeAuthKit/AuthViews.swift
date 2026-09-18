@@ -119,6 +119,71 @@ public struct ForgotPasswordView: View {
     }
 }
 
+public struct InvitationRegistrationView: View {
+    private let client: AuthClient
+    private let inviteToken: String
+    private let onRegistered: (AuthSession) -> Void
+
+    @State private var username = ""
+    @State private var password = ""
+    @State private var confirmation = ""
+    @State private var errorMessage: String?
+    @State private var isLoading = false
+
+    public init(
+        client: AuthClient,
+        inviteToken: String,
+        onRegistered: @escaping (AuthSession) -> Void
+    ) {
+        self.client = client
+        self.inviteToken = inviteToken
+        self.onRegistered = onRegistered
+    }
+
+    public var body: some View {
+        Form {
+            Section {
+                TextField("Username", text: $username)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $password)
+                SecureField("Repeat password", text: $confirmation)
+            }
+
+            Button("Create account") {
+                Task { await register() }
+            }
+            .disabled(username.isEmpty || password.isEmpty || confirmation.isEmpty || isLoading)
+        }
+        .navigationTitle("Create account")
+        .alert("Registration failed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    private func register() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let session = try await client.register(
+                username: username,
+                password: password,
+                confirmation: confirmation,
+                inviteToken: inviteToken
+            )
+            onRegistered(session)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
 public struct ResetPasswordView: View {
     private let client: AuthClient
     private let token: String

@@ -35,4 +35,26 @@ final class AuthModelsTests: XCTestCase {
 
         XCTAssertNil(PasswordResetLink(url: url, configuration: configuration))
     }
+
+    func testAccountInviteLinkRequiresExactClientPathAndClientID() {
+        let configuration = AuthConfiguration(
+            apiBaseURL: URL(string: "https://accounts.vandij.ke/api")!,
+            clientID: "beesterlijk",
+            nativeOrigin: "beesterlijk-ios://app"
+        )
+        let url = URL(string: "https://accounts.vandij.ke/invite/beesterlijk?token=abc123&client_id=beesterlijk")!
+
+        let link = AccountInviteLink(url: url, configuration: configuration)
+
+        XCTAssertEqual(link?.token, "abc123")
+        XCTAssertEqual(link?.clientID, "beesterlijk")
+        XCTAssertNil(AccountInviteLink(
+            url: URL(string: "https://accounts.vandij.ke/invite/other?token=abc123&client_id=beesterlijk")!,
+            configuration: configuration
+        ))
+        XCTAssertNil(AccountInviteLink(
+            url: URL(string: "https://accounts.vandij.ke/invite/beesterlijk?token=abc123&client_id=vandijke-admin")!,
+            configuration: configuration
+        ))
+    }
 }

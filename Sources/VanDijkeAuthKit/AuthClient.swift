@@ -63,6 +63,39 @@ public actor AuthClient {
     }
 
     @discardableResult
+    public func register(
+        username: String,
+        password: String,
+        confirmation: String,
+        inviteToken: String
+    ) async throws -> AuthSession {
+        guard password == confirmation else {
+            throw AuthError.passwordMismatch
+        }
+
+        let payload: LoginPayload = try await request(
+            "/auth/register",
+            method: "POST",
+            body: [
+                "username": username,
+                "password": password,
+                "password_confirm": confirmation,
+                "invite_token": inviteToken,
+                "client_id": configuration.clientID,
+                "mobile": true,
+            ]
+        )
+
+        guard !payload.mobileToken.isEmpty else {
+            throw AuthError.invalidResponse
+        }
+
+        let session = AuthSession(token: payload.mobileToken, user: payload.user)
+        sessionStore.save(session)
+        return session
+    }
+
+    @discardableResult
     public func requestPasswordReset(email: String) async throws -> PasswordResetRequestResult {
         try await request(
             "/password-reset/request",
