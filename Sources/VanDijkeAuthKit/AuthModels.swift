@@ -30,10 +30,22 @@ public struct AuthUser: Codable, Equatable, Sendable {
 
 public struct AuthSession: Codable, Equatable, Sendable {
     public let token: String
+    public let refreshToken: String?
+    public let accessTokenExpiresAt: Int?
+    public let deviceID: String?
     public let user: AuthUser?
 
-    public init(token: String, user: AuthUser? = nil) {
+    public init(
+        token: String,
+        refreshToken: String? = nil,
+        accessTokenExpiresAt: Int? = nil,
+        deviceID: String? = nil,
+        user: AuthUser? = nil
+    ) {
         self.token = token
+        self.refreshToken = refreshToken
+        self.accessTokenExpiresAt = accessTokenExpiresAt
+        self.deviceID = deviceID
         self.user = user
     }
 }

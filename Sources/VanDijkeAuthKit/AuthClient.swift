@@ -24,8 +24,61 @@ public actor AuthClient {
         session?.token
     }
 
+    public func validToken() async -> String? {
+        guard let currentSession = session else { return nil }
+
+        guard let expiresAt = currentSession.accessTokenExpiresAt else {
+            return currentSession.token
+        }
+
+        let refreshMargin = 60
+        let now = Int(Date().timeIntervalSince1970)
+        guard expiresAt <= now + refreshMargin else {
+            return currentSession.token
+        }
+
+        guard let refreshToken = currentSession.refreshToken,
+              let deviceID = currentSession.deviceID else {
+            sessionStore.clear()
+            return nil
+        }
+
+        do {
+            let payload: LoginPayload = try await request(
+                "/auth/refresh",
+                method: "POST",
+                body: [
+                    "refresh_token": refreshToken,
+                    "client_id": configuration.clientID,
+                    "device_id": deviceID,
+                    "mobile": true,
+                ]
+            )
+
+            guard !payload.mobileToken.isEmpty,
+                  let newRefreshToken = payload.mobileRefreshToken,
+                  let newExpiresAt = payload.mobileTokenExpiresAt else {
+                throw AuthError.invalidResponse
+            }
+
+            let refreshedSession = AuthSession(
+                token: payload.mobileToken,
+                refreshToken: newRefreshToken,
+                accessTokenExpiresAt: newExpiresAt,
+                deviceID: deviceID,
+                user: currentSession.user ?? payload.user
+            )
+            sessionStore.save(refreshedSession)
+            return refreshedSession.token
+        } catch {
+            sessionStore.clear()
+            return nil
+        }
+    }
+
     @discardableResult
     public func login(username: String, password: String) async throws -> AuthSession {
+        let deviceID = UUID().uuidString
         let payload: LoginPayload = try await request(
             "/auth/login",
             method: "POST",
@@ -34,6 +87,7 @@ public actor AuthClient {
                 "password": password,
                 "mobile": true,
                 "client_id": configuration.clientID,
+                "device_id": deviceID,
             ]
         )
 
@@ -41,14 +95,14 @@ public actor AuthClient {
             throw AuthError.invalidResponse
         }
 
-        let session = AuthSession(token: payload.mobileToken, user: payload.user)
+        let session = makeSession(from: payload, deviceID: deviceID)
         sessionStore.save(session)
         return session
     }
 
     public func logout() async {
         defer { sessionStore.clear() }
-        guard let token else { return }
+        guard let token = await validToken() else { return }
 
         do {
             let _: EmptyPayload = try await request(
@@ -73,6 +127,7 @@ public actor AuthClient {
             throw AuthError.passwordMismatch
         }
 
+        let deviceID = UUID().uuidString
         let payload: LoginPayload = try await request(
             "/auth/register",
             method: "POST",
@@ -83,6 +138,7 @@ public actor AuthClient {
                 "invite_token": inviteToken,
                 "client_id": configuration.clientID,
                 "mobile": true,
+                "device_id": deviceID,
             ]
         )
 
@@ -90,7 +146,7 @@ public actor AuthClient {
             throw AuthError.invalidResponse
         }
 
-        let session = AuthSession(token: payload.mobileToken, user: payload.user)
+        let session = makeSession(from: payload, deviceID: deviceID)
         sessionStore.save(session)
         return session
     }
@@ -139,6 +195,7 @@ public actor AuthClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(configuration.nativeOrigin, forHTTPHeaderField: "Origin")
+        request.setValue(configuration.clientID, forHTTPHeaderField: "X-Client-ID")
 
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -171,14 +228,28 @@ public actor AuthClient {
 
         return value
     }
+
+    private func makeSession(from payload: LoginPayload, deviceID: String) -> AuthSession {
+        AuthSession(
+            token: payload.mobileToken,
+            refreshToken: payload.mobileRefreshToken,
+            accessTokenExpiresAt: payload.mobileTokenExpiresAt,
+            deviceID: deviceID,
+            user: payload.user
+        )
+    }
 }
 
 private struct LoginPayload: Decodable {
     let mobileToken: String
+    let mobileRefreshToken: String?
+    let mobileTokenExpiresAt: Int?
     let user: AuthUser?
 
     enum CodingKeys: String, CodingKey {
         case mobileToken = "mobile_token"
+        case mobileRefreshToken = "mobile_refresh_token"
+        case mobileTokenExpiresAt = "mobile_token_expires_at"
         case user
     }
 }
