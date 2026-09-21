@@ -28,7 +28,22 @@ public final class KeychainAuthSessionStore: AuthSessionStore, @unchecked Sendab
             return nil
         }
 
-        return try? JSONDecoder().decode(AuthSession.self, from: data)
+        guard let session = try? JSONDecoder().decode(AuthSession.self, from: data) else {
+            return nil
+        }
+
+        // Upgrade sessions written by older versions without moving the token
+        // outside this device or making it available before first unlock.
+        let updateQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+        let updateAttributes: [String: Any] = [
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+        ]
+        SecItemUpdate(updateQuery as CFDictionary, updateAttributes as CFDictionary)
+        return session
     }
 
     public func save(_ session: AuthSession) {
@@ -39,7 +54,8 @@ public final class KeychainAuthSessionStore: AuthSessionStore, @unchecked Sendab
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            kSecAttrSynchronizable as String: kCFBooleanFalse as Any,
             kSecValueData as String: data,
         ]
         SecItemAdd(query as CFDictionary, nil)

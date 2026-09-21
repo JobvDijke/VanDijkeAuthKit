@@ -6,6 +6,7 @@ public struct AuthConfiguration: Sendable, Equatable {
     public let clientID: String
     public let nativeOrigin: String
     public let resetLinkHost: String
+    public let resetLinkPath: String
     public let inviteLinkPath: String
 
     public init(
@@ -13,12 +14,14 @@ public struct AuthConfiguration: Sendable, Equatable {
         clientID: String,
         nativeOrigin: String,
         resetLinkHost: String? = nil,
+        resetLinkPath: String? = nil,
         inviteLinkPath: String? = nil
     ) {
         self.apiBaseURL = apiBaseURL
         self.clientID = clientID
         self.nativeOrigin = nativeOrigin
         self.resetLinkHost = resetLinkHost ?? apiBaseURL.host ?? ""
+        self.resetLinkPath = resetLinkPath ?? "/reset/\(clientID)"
         self.inviteLinkPath = inviteLinkPath ?? "/invite/\(clientID)"
     }
 

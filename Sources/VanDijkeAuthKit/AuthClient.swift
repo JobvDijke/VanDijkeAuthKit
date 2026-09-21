@@ -9,11 +9,19 @@ public actor AuthClient {
     public init(
         configuration: AuthConfiguration,
         sessionStore: any AuthSessionStore,
-        urlSession: URLSession = .shared
+        urlSession: URLSession? = nil
     ) {
         self.configuration = configuration
         self.sessionStore = sessionStore
-        self.urlSession = urlSession
+        if let urlSession {
+            self.urlSession = urlSession
+        } else {
+            let sessionConfiguration = URLSessionConfiguration.ephemeral
+            sessionConfiguration.httpShouldSetCookies = false
+            sessionConfiguration.httpShouldHandleCookies = false
+            sessionConfiguration.urlCache = nil
+            self.urlSession = URLSession(configuration: sessionConfiguration)
+        }
     }
 
     public var session: AuthSession? {
@@ -193,6 +201,8 @@ public actor AuthClient {
     ) async throws -> Value {
         var request = URLRequest(url: configuration.endpoint(path))
         request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(configuration.nativeOrigin, forHTTPHeaderField: "Origin")
         request.setValue(configuration.clientID, forHTTPHeaderField: "X-Client-ID")

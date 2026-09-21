@@ -36,6 +36,27 @@ final class AuthModelsTests: XCTestCase {
         XCTAssertNil(PasswordResetLink(url: url, configuration: configuration))
     }
 
+    func testPasswordResetLinkRequiresExactAppPath() {
+        let configuration = AuthConfiguration(
+            apiBaseURL: URL(string: "https://accounts.vandij.ke/api")!,
+            clientID: "beesterlijk",
+            nativeOrigin: "beesterlijk-ios://app"
+        )
+
+        XCTAssertNil(PasswordResetLink(
+            url: URL(string: "https://accounts.vandij.ke/reset/vandijke-admin?token=abc123")!,
+            configuration: configuration
+        ))
+        XCTAssertNil(PasswordResetLink(
+            url: URL(string: "https://accounts.vandij.ke/reset/beesterlijk/extra?token=abc123")!,
+            configuration: configuration
+        ))
+        XCTAssertNil(PasswordResetLink(
+            url: URL(string: "https://accounts.vandij.ke/reset/beesterlijk?token=abc123&client_id=vandijke-admin")!,
+            configuration: configuration
+        ))
+    }
+
     func testAccountInviteLinkRequiresExactClientPathAndClientID() {
         let configuration = AuthConfiguration(
             apiBaseURL: URL(string: "https://accounts.vandij.ke/api")!,

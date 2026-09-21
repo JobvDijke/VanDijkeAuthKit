@@ -66,13 +66,18 @@ public struct PasswordResetLink: Equatable, Sendable {
     public init?(url: URL, configuration: AuthConfiguration) {
         guard url.scheme?.lowercased() == "https",
               url.host?.lowercased() == configuration.resetLinkHost.lowercased(),
-              url.pathComponents.contains("reset") else {
+              url.path == configuration.resetLinkPath else {
             return nil
         }
 
         let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         guard let token = queryItems.first(where: { $0.name == "token" })?.value,
               !token.isEmpty else {
+            return nil
+        }
+
+        if let clientID = queryItems.first(where: { $0.name == "client_id" })?.value,
+           clientID != configuration.clientID {
             return nil
         }
 
