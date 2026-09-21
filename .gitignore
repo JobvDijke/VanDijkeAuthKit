@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+DerivedData/
+xcuserdata/
+
+# Local credentials and signing material
+.env
+.env.*
+!*.env.example
+*.p8
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.provisionprofile
