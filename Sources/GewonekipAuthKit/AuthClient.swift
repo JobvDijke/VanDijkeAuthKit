@@ -26,7 +26,7 @@ public actor AuthClient {
         } else {
             let sessionConfiguration = URLSessionConfiguration.ephemeral
             sessionConfiguration.httpShouldSetCookies = false
-            sessionConfiguration.httpShouldHandleCookies = false
+            sessionConfiguration.httpCookieStorage = nil
             sessionConfiguration.urlCache = nil
             self.urlSession = URLSession(configuration: sessionConfiguration)
         }

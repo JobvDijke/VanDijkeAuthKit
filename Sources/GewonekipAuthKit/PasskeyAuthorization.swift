@@ -86,10 +86,11 @@ enum PasskeyAuthorization {
         let request = provider.createCredentialAssertionRequest(challenge: challenge)
         request.userVerificationPreference = .required
         if let allowedCredentials = options.allowCredentials {
-            request.allowedCredentials = allowedCredentials.compactMap { descriptor in
+            let platformCredentials: [ASAuthorizationPlatformPublicKeyCredentialDescriptor] = allowedCredentials.compactMap { descriptor in
                 guard let credentialID = decode(descriptor.id) else { return nil }
-                return ASAuthorizationPublicKeyCredentialDescriptor(credentialID: credentialID)
+                return ASAuthorizationPlatformPublicKeyCredentialDescriptor(credentialID: credentialID)
             }
+            request.allowedCredentials = platformCredentials
         }
 
         let authorization = try await perform(request)
