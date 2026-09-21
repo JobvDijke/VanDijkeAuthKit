@@ -10,6 +10,8 @@ public actor AuthClient {
     private let urlSession: URLSession
     #if os(iOS)
     private let passkeyURLSession: URLSession
+    private var cachedStepUpToken: String?
+    private var cachedStepUpExpiresAt: Int?
     #endif
 
     public init(
@@ -120,7 +122,13 @@ public actor AuthClient {
     }
 
     public func logout() async {
-        defer { sessionStore.clear() }
+        defer {
+            sessionStore.clear()
+            #if os(iOS)
+            cachedStepUpToken = nil
+            cachedStepUpExpiresAt = nil
+            #endif
+        }
         guard let token = await validToken() else { return }
 
         do {
@@ -136,6 +144,40 @@ public actor AuthClient {
     }
 
     #if os(iOS)
+    public func requireStepUp() async throws -> String {
+        guard configuration.passkeysEnabled else {
+            throw AuthError.server("Passkeys are not enabled for this app.")
+        }
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+
+        let now = Int(Date().timeIntervalSince1970)
+        if let cachedStepUpToken,
+           let cachedStepUpExpiresAt,
+           cachedStepUpExpiresAt > now + 15 {
+            return cachedStepUpToken
+        }
+
+        let optionsPayload: PasskeyOptionsPayload = try await request(
+            "/auth/step-up/options",
+            method: "POST",
+            token: token,
+            using: passkeyURLSession
+        )
+        let credential = try await PasskeyAuthorization.assert(options: optionsPayload.options)
+        let response: StepUpPayload = try await request(
+            "/auth/step-up/verify",
+            method: "POST",
+            body: ["credential": credential.assertionBody],
+            token: token,
+            using: passkeyURLSession
+        )
+        cachedStepUpToken = response.stepUpToken
+        cachedStepUpExpiresAt = now + response.expiresIn
+        return response.stepUpToken
+    }
+
     public func passkeyStatus() async throws -> PasskeyStatus {
         guard let token = await validToken() else {
             throw AuthError.unauthorized
@@ -156,10 +198,12 @@ public actor AuthClient {
         guard let token = await validToken() else {
             throw AuthError.unauthorized
         }
+        let stepUpToken = try await requireStepUp()
         let payload: PasskeyListPayload = try await request(
             "/auth/passkeys/\(id)",
             method: "DELETE",
-            token: token
+            token: token,
+            stepUpToken: stepUpToken
         )
         return payload.passkeys
     }
@@ -176,11 +220,13 @@ public actor AuthClient {
         guard let token = await validToken() else {
             throw AuthError.unauthorized
         }
+        let stepUpToken = try await requireStepUp()
         let payload: MobileSessionListPayload = try await request(
             "/auth/sessions/revoke",
             method: "POST",
             body: ["session_id": id],
-            token: token
+            token: token,
+            stepUpToken: stepUpToken
         )
         return payload.sessions
     }
@@ -189,11 +235,13 @@ public actor AuthClient {
         guard let token = await validToken() else {
             throw AuthError.unauthorized
         }
+        let stepUpToken = try await requireStepUp()
         let payload: MobileSessionListPayload = try await request(
             "/auth/sessions/revoke-others",
             method: "POST",
             body: [:],
-            token: token
+            token: token,
+            stepUpToken: stepUpToken
         )
         return payload.sessions
     }
@@ -206,10 +254,13 @@ public actor AuthClient {
             throw AuthError.unauthorized
         }
 
+        let existingStatus = try await passkeyStatus()
+        let stepUpToken = existingStatus.enabled ? try await requireStepUp() : nil
         let optionsPayload: PasskeyOptionsPayload = try await request(
             "/auth/passkeys/register/options",
             method: "POST",
             token: token,
+            stepUpToken: stepUpToken,
             using: passkeyURLSession
         )
         let credential = try await PasskeyAuthorization.register(options: optionsPayload.options)
@@ -218,6 +269,7 @@ public actor AuthClient {
             method: "POST",
             body: ["credential": credential.registrationBody],
             token: token,
+            stepUpToken: stepUpToken,
             using: passkeyURLSession
         )
         return response.passkey
@@ -340,6 +392,7 @@ public actor AuthClient {
         method: String = "GET",
         body: [String: Any]? = nil,
         token: String? = nil,
+        stepUpToken: String? = nil,
         using session: URLSession? = nil
     ) async throws -> Value {
         var request = URLRequest(url: configuration.endpoint(path))
@@ -352,6 +405,9 @@ public actor AuthClient {
 
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        if let stepUpToken {
+            request.setValue(stepUpToken, forHTTPHeaderField: "X-Step-Up-Token")
         }
 
         if let body {
@@ -379,6 +435,14 @@ public actor AuthClient {
             throw AuthError.passkeyRequired
         }
 
+        if httpResponse.statusCode == 403, envelope.error?.code == "step_up_required" {
+            #if os(iOS)
+            cachedStepUpToken = nil
+            cachedStepUpExpiresAt = nil
+            #endif
+            throw AuthError.stepUpRequired
+        }
+
         guard httpResponse.statusCode < 400, envelope.ok, let value = envelope.data else {
             throw AuthError.server(envelope.error?.message ?? "The account request failed.")
         }
@@ -403,6 +467,16 @@ private struct PasskeyStatusPayload: Decodable {
 
 private struct PasskeyListPayload: Decodable {
     let passkeys: [PasskeyInfo]
+}
+
+private struct StepUpPayload: Decodable {
+    let stepUpToken: String
+    let expiresIn: Int
+
+    enum CodingKeys: String, CodingKey {
+        case stepUpToken = "step_up_token"
+        case expiresIn = "expires_in"
+    }
 }
 
 private struct MobileSessionListPayload: Decodable {

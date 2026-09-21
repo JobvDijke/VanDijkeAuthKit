@@ -169,6 +169,7 @@ public enum AuthError: LocalizedError, Equatable, Sendable {
     case passwordMismatch
     case invalidResetLink
     case passkeyRequired
+    case stepUpRequired
 
     public var errorDescription: String? {
         switch self {
@@ -184,6 +185,8 @@ public enum AuthError: LocalizedError, Equatable, Sendable {
             return "This password-reset link is invalid or has expired."
         case .passkeyRequired:
             return "This admin account must sign in with a passkey."
+        case .stepUpRequired:
+            return "Please confirm this action with Face ID or your passkey."
         }
     }
 }
