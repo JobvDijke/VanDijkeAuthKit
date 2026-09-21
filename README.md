@@ -62,3 +62,14 @@ if let link = PasswordResetLink(url: url, configuration: configuration) {
 
 This package contains no secrets. Apps should provide their own client ID,
 native origin, bundle-specific Keychain service, and app-specific API code.
+
+## Local security hook
+
+Enable the repository's pre-push security scan once after cloning:
+
+```sh
+./scripts/install_git_hooks.sh
+```
+
+The hook scans the current tracked files and all commits being pushed for
+secrets and signing files.
