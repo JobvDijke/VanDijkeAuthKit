@@ -164,6 +164,40 @@ public actor AuthClient {
         return payload.passkeys
     }
 
+    public func listMobileSessions() async throws -> [MobileSessionInfo] {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: MobileSessionListPayload = try await request("/auth/sessions", token: token)
+        return payload.sessions
+    }
+
+    public func revokeMobileSession(id: String) async throws -> [MobileSessionInfo] {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: MobileSessionListPayload = try await request(
+            "/auth/sessions/revoke",
+            method: "POST",
+            body: ["session_id": id],
+            token: token
+        )
+        return payload.sessions
+    }
+
+    public func revokeOtherMobileSessions() async throws -> [MobileSessionInfo] {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: MobileSessionListPayload = try await request(
+            "/auth/sessions/revoke-others",
+            method: "POST",
+            body: [:],
+            token: token
+        )
+        return payload.sessions
+    }
+
     public func registerPasskey() async throws -> PasskeyStatus {
         guard configuration.passkeysEnabled else {
             throw AuthError.server("Passkeys are not enabled for this app.")
@@ -369,6 +403,10 @@ private struct PasskeyStatusPayload: Decodable {
 
 private struct PasskeyListPayload: Decodable {
     let passkeys: [PasskeyInfo]
+}
+
+private struct MobileSessionListPayload: Decodable {
+    let sessions: [MobileSessionInfo]
 }
 
 private struct PasskeyOptionsPayload: Decodable {

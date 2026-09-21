@@ -82,6 +82,24 @@ public struct PasskeyInfo: Decodable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct MobileSessionInfo: Decodable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let clientID: String
+    public let deviceID: String?
+    public let createdAt: String?
+    public let lastUsedAt: String?
+    public let isCurrent: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case clientID = "client_id"
+        case deviceID = "device_id"
+        case createdAt = "created_at"
+        case lastUsedAt = "last_used_at"
+        case isCurrent = "is_current"
+    }
+}
+
 public struct PasswordResetLink: Equatable, Sendable {
     public let token: String
     public let clientID: String?
