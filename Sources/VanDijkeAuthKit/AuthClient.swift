@@ -144,6 +144,26 @@ public actor AuthClient {
         return payload.passkey
     }
 
+    public func listPasskeys() async throws -> [PasskeyInfo] {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: PasskeyListPayload = try await request("/auth/passkeys", token: token)
+        return payload.passkeys
+    }
+
+    public func revokePasskey(id: Int) async throws -> [PasskeyInfo] {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: PasskeyListPayload = try await request(
+            "/auth/passkeys/\(id)",
+            method: "DELETE",
+            token: token
+        )
+        return payload.passkeys
+    }
+
     public func registerPasskey() async throws -> PasskeyStatus {
         guard configuration.passkeysEnabled else {
             throw AuthError.server("Passkeys are not enabled for this app.")
@@ -345,6 +365,10 @@ public actor AuthClient {
 
 private struct PasskeyStatusPayload: Decodable {
     let passkey: PasskeyStatus
+}
+
+private struct PasskeyListPayload: Decodable {
+    let passkeys: [PasskeyInfo]
 }
 
 private struct PasskeyOptionsPayload: Decodable {

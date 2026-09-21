@@ -64,6 +64,24 @@ public struct PasskeyStatus: Decodable, Equatable, Sendable {
     public let count: Int
 }
 
+public struct PasskeyInfo: Decodable, Equatable, Identifiable, Sendable {
+    public let id: Int
+    public let name: String
+    public let aaguid: String?
+    public let deviceType: String?
+    public let backedUp: Bool
+    public let createdAt: String?
+    public let lastUsedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, aaguid
+        case deviceType = "device_type"
+        case backedUp = "backed_up"
+        case createdAt = "created_at"
+        case lastUsedAt = "last_used_at"
+    }
+}
+
 public struct PasswordResetLink: Equatable, Sendable {
     public let token: String
     public let clientID: String?
