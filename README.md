@@ -24,10 +24,10 @@ import GewonekipAuthKit
 
 ```swift
 let configuration = AuthConfiguration(
-    apiBaseURL: URL(string: "https://vandij.ke/api")!,
+    apiBaseURL: URL(string: "https://accounts.gewonekip.com/api")!,
     clientID: "beesterlijk",
     nativeOrigin: "beesterlijk-ios://app",
-    resetLinkHost: "accounts.vandij.ke"
+    resetLinkHost: "accounts.gewonekip.com"
 )
 
 let client = AuthClient(
@@ -36,8 +36,7 @@ let client = AuthClient(
 )
 ```
 
-The account API URL is currently the existing Gewonekip API. It can later move
-to a dedicated accounts host without changing the package API.
+The account API is hosted at `https://accounts.gewonekip.com/api`.
 
 ## Native screens
 
