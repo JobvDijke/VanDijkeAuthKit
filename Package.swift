@@ -3,22 +3,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "VanDijkeAuthKit",
+    name: "GewonekipAuthKit",
     platforms: [
         .iOS(.v17),
         .macOS(.v12),
     ],
     products: [
         .library(
-            name: "VanDijkeAuthKit",
-            targets: ["VanDijkeAuthKit"]
+            name: "GewonekipAuthKit",
+            targets: ["GewonekipAuthKit"]
         ),
     ],
     targets: [
-        .target(name: "VanDijkeAuthKit"),
+        .target(name: "GewonekipAuthKit"),
         .testTarget(
-            name: "VanDijkeAuthKitTests",
-            dependencies: ["VanDijkeAuthKit"]
+            name: "GewonekipAuthKitTests",
+            dependencies: ["GewonekipAuthKit"]
         ),
     ]
 )

@@ -1,6 +1,6 @@
-# VanDijkeAuthKit
+# GewonekipAuthKit
 
-Shared native authentication components for VanDijke apps.
+Shared native authentication components for Gewonekip apps.
 
 The package owns the reusable account experience:
 
@@ -17,7 +17,7 @@ It does not own app-specific API calls, permissions, or business logic.
 In Xcode, add this repository as a Swift Package dependency and import it:
 
 ```swift
-import VanDijkeAuthKit
+import GewonekipAuthKit
 ```
 
 ## Configure an app
@@ -36,7 +36,7 @@ let client = AuthClient(
 )
 ```
 
-The account API URL is currently the existing VanDijke API. It can later move
+The account API URL is currently the existing Gewonekip API. It can later move
 to a dedicated accounts host without changing the package API.
 
 ## Native screens

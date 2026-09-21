@@ -1,5 +1,5 @@
 import XCTest
-@testable import VanDijkeAuthKit
+@testable import GewonekipAuthKit
 
 final class AuthModelsTests: XCTestCase {
     func testLoginPayloadShapeCanBeDecodedThroughSessionModels() throws {
@@ -51,7 +51,7 @@ final class AuthModelsTests: XCTestCase {
         )
 
         XCTAssertNil(PasswordResetLink(
-            url: URL(string: "https://accounts.vandij.ke/reset/vandijke-admin?token=abc123")!,
+            url: URL(string: "https://accounts.vandij.ke/reset/gewonekip-admin?token=abc123")!,
             configuration: configuration
         ))
         XCTAssertNil(PasswordResetLink(
@@ -59,7 +59,7 @@ final class AuthModelsTests: XCTestCase {
             configuration: configuration
         ))
         XCTAssertNil(PasswordResetLink(
-            url: URL(string: "https://accounts.vandij.ke/reset/beesterlijk?token=abc123&client_id=vandijke-admin")!,
+            url: URL(string: "https://accounts.vandij.ke/reset/beesterlijk?token=abc123&client_id=gewonekip-admin")!,
             configuration: configuration
         ))
     }
@@ -81,7 +81,7 @@ final class AuthModelsTests: XCTestCase {
             configuration: configuration
         ))
         XCTAssertNil(AccountInviteLink(
-            url: URL(string: "https://accounts.vandij.ke/invite/beesterlijk?token=abc123&client_id=vandijke-admin")!,
+            url: URL(string: "https://accounts.vandij.ke/invite/beesterlijk?token=abc123&client_id=gewonekip-admin")!,
             configuration: configuration
         ))
     }

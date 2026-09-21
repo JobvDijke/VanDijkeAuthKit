@@ -1,5 +1,5 @@
 import XCTest
-@testable import VanDijkeAuthKit
+@testable import GewonekipAuthKit
 
 final class AuthSessionStoreTests: XCTestCase {
     func testInMemoryStoreRoundTripsAndClears() {
