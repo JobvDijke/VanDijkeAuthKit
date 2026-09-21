@@ -59,6 +59,11 @@ public struct PasswordResetResult: Decodable, Equatable, Sendable {
     public let reset: Bool
 }
 
+public struct PasskeyStatus: Decodable, Equatable, Sendable {
+    public let enabled: Bool
+    public let count: Int
+}
+
 public struct PasswordResetLink: Equatable, Sendable {
     public let token: String
     public let clientID: String?
@@ -127,6 +132,7 @@ public enum AuthError: LocalizedError, Equatable, Sendable {
     case server(String)
     case passwordMismatch
     case invalidResetLink
+    case passkeyRequired
 
     public var errorDescription: String? {
         switch self {
@@ -140,6 +146,8 @@ public enum AuthError: LocalizedError, Equatable, Sendable {
             return "The passwords do not match."
         case .invalidResetLink:
             return "This password-reset link is invalid or has expired."
+        case .passkeyRequired:
+            return "This admin account must sign in with a passkey."
         }
     }
 }

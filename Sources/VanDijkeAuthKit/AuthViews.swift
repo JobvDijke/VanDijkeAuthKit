@@ -4,6 +4,7 @@ import SwiftUI
 public struct LoginView: View {
     private let client: AuthClient
     private let onAuthenticated: (AuthSession) -> Void
+    private let passkeysEnabled: Bool
 
     @State private var username = ""
     @State private var password = ""
@@ -12,9 +13,11 @@ public struct LoginView: View {
 
     public init(
         client: AuthClient,
+        passkeysEnabled: Bool = false,
         onAuthenticated: @escaping (AuthSession) -> Void
     ) {
         self.client = client
+        self.passkeysEnabled = passkeysEnabled
         self.onAuthenticated = onAuthenticated
     }
 
@@ -33,6 +36,15 @@ public struct LoginView: View {
                 Task { await login() }
             }
             .disabled(username.isEmpty || password.isEmpty || isLoading)
+
+            #if os(iOS)
+            if passkeysEnabled {
+                Button("Sign in with passkey") {
+                    Task { await loginWithPasskey() }
+                }
+                .disabled(isLoading)
+            }
+            #endif
 
             NavigationLink("Forgot password?") {
                 ForgotPasswordView(client: client)
@@ -60,6 +72,20 @@ public struct LoginView: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    #if os(iOS)
+    private func loginWithPasskey() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let session = try await client.loginWithPasskey(username: username.isEmpty ? nil : username)
+            onAuthenticated(session)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    #endif
 }
 
 public struct ForgotPasswordView: View {

@@ -1,10 +1,16 @@
 import Foundation
+#if os(iOS)
+import AuthenticationServices
+#endif
 
 public actor AuthClient {
     public let configuration: AuthConfiguration
 
     private let sessionStore: any AuthSessionStore
     private let urlSession: URLSession
+    #if os(iOS)
+    private let passkeyURLSession: URLSession
+    #endif
 
     public init(
         configuration: AuthConfiguration,
@@ -22,6 +28,11 @@ public actor AuthClient {
             sessionConfiguration.urlCache = nil
             self.urlSession = URLSession(configuration: sessionConfiguration)
         }
+        #if os(iOS)
+        let passkeySessionConfiguration = URLSessionConfiguration.ephemeral
+        passkeySessionConfiguration.urlCache = nil
+        self.passkeyURLSession = URLSession(configuration: passkeySessionConfiguration)
+        #endif
     }
 
     public var session: AuthSession? {
@@ -124,6 +135,83 @@ public actor AuthClient {
         }
     }
 
+    #if os(iOS)
+    public func passkeyStatus() async throws -> PasskeyStatus {
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+        let payload: MePayload = try await request("/me", token: token)
+        return payload.passkey
+    }
+
+    public func registerPasskey() async throws -> PasskeyStatus {
+        guard configuration.passkeysEnabled else {
+            throw AuthError.server("Passkeys are not enabled for this app.")
+        }
+        guard let token = await validToken() else {
+            throw AuthError.unauthorized
+        }
+
+        let optionsPayload: PasskeyOptionsPayload = try await request(
+            "/auth/passkeys/register/options",
+            method: "POST",
+            token: token,
+            using: passkeyURLSession
+        )
+        let credential = try await PasskeyAuthorization.register(options: optionsPayload.options)
+        let response: PasskeyStatusPayload = try await request(
+            "/auth/passkeys/register/verify",
+            method: "POST",
+            body: ["credential": credential.registrationBody],
+            token: token,
+            using: passkeyURLSession
+        )
+        return response.passkey
+    }
+
+    public func loginWithPasskey(username: String? = nil) async throws -> AuthSession {
+        guard configuration.passkeysEnabled else {
+            throw AuthError.server("Passkeys are not enabled for this app.")
+        }
+
+        let deviceID = UUID().uuidString
+        var optionsBody: [String: Any] = [
+            "mobile": true,
+            "client_id": configuration.clientID,
+            "device_id": deviceID,
+        ]
+        if let username, !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            optionsBody["username"] = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        let optionsPayload: PasskeyOptionsPayload = try await request(
+            "/auth/passkeys/login/options",
+            method: "POST",
+            body: optionsBody,
+            using: passkeyURLSession
+        )
+        let credential = try await PasskeyAuthorization.assert(options: optionsPayload.options)
+        let payload: LoginPayload = try await request(
+            "/auth/passkeys/login/verify",
+            method: "POST",
+            body: [
+                "credential": credential.assertionBody,
+                "mobile": true,
+                "client_id": configuration.clientID,
+                "device_id": deviceID,
+            ],
+            using: passkeyURLSession
+        )
+
+        guard !payload.mobileToken.isEmpty else {
+            throw AuthError.invalidResponse
+        }
+        let session = makeSession(from: payload, deviceID: deviceID)
+        sessionStore.save(session)
+        return session
+    }
+    #endif
+
     @discardableResult
     public func register(
         username: String,
@@ -197,7 +285,8 @@ public actor AuthClient {
         _ path: String,
         method: String = "GET",
         body: [String: Any]? = nil,
-        token: String? = nil
+        token: String? = nil,
+        using session: URLSession? = nil
     ) async throws -> Value {
         var request = URLRequest(url: configuration.endpoint(path))
         request.httpMethod = method
@@ -216,7 +305,7 @@ public actor AuthClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
-        let (data, response) = try await urlSession.data(for: request)
+        let (data, response) = try await (session ?? urlSession).data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AuthError.invalidResponse
         }
@@ -230,6 +319,10 @@ public actor AuthClient {
 
         if httpResponse.statusCode == 401 {
             throw AuthError.unauthorized
+        }
+
+        if httpResponse.statusCode == 403, envelope.error?.code == "passkey_required" {
+            throw AuthError.passkeyRequired
         }
 
         guard httpResponse.statusCode < 400, envelope.ok, let value = envelope.data else {
@@ -248,6 +341,45 @@ public actor AuthClient {
             user: payload.user
         )
     }
+}
+
+private struct PasskeyStatusPayload: Decodable {
+    let passkey: PasskeyStatus
+}
+
+private struct PasskeyOptionsPayload: Decodable {
+    let options: PasskeyOptions
+}
+
+struct PasskeyOptions: Decodable, Sendable {
+    struct RelyingParty: Decodable, Sendable {
+        let id: String
+    }
+
+    struct User: Decodable, Sendable {
+        let id: String
+        let name: String
+    }
+
+    struct CredentialDescriptor: Decodable, Sendable {
+        let id: String
+    }
+
+    let challenge: String
+    let rp: RelyingParty?
+    let user: User?
+    let rpID: String?
+    let allowCredentials: [CredentialDescriptor]?
+
+    enum CodingKeys: String, CodingKey {
+        case challenge, rp, user
+        case rpID = "rpId"
+        case allowCredentials
+    }
+}
+
+private struct MePayload: Decodable {
+    let passkey: PasskeyStatus
 }
 
 private struct LoginPayload: Decodable {

@@ -8,6 +8,7 @@ public struct AuthConfiguration: Sendable, Equatable {
     public let resetLinkHost: String
     public let resetLinkPath: String
     public let inviteLinkPath: String
+    public let passkeysEnabled: Bool
 
     public init(
         apiBaseURL: URL,
@@ -15,7 +16,8 @@ public struct AuthConfiguration: Sendable, Equatable {
         nativeOrigin: String,
         resetLinkHost: String? = nil,
         resetLinkPath: String? = nil,
-        inviteLinkPath: String? = nil
+        inviteLinkPath: String? = nil,
+        passkeysEnabled: Bool = false
     ) {
         self.apiBaseURL = apiBaseURL
         self.clientID = clientID
@@ -23,6 +25,7 @@ public struct AuthConfiguration: Sendable, Equatable {
         self.resetLinkHost = resetLinkHost ?? apiBaseURL.host ?? ""
         self.resetLinkPath = resetLinkPath ?? "/reset/\(clientID)"
         self.inviteLinkPath = inviteLinkPath ?? "/invite/\(clientID)"
+        self.passkeysEnabled = passkeysEnabled
     }
 
     func endpoint(_ path: String) -> URL {

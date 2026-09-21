@@ -11,6 +11,13 @@ final class AuthModelsTests: XCTestCase {
         XCTAssertEqual(session.user?.email, "job@example.com")
     }
 
+    func testPasskeyStatusDecodes() throws {
+        let data = #"{"enabled":true,"count":2}"#.data(using: .utf8)!
+        let status = try JSONDecoder().decode(PasskeyStatus.self, from: data)
+
+        XCTAssertEqual(status, PasskeyStatus(enabled: true, count: 2))
+    }
+
     func testPasswordResetLinkExtractsTokenAndClientID() {
         let configuration = AuthConfiguration(
             apiBaseURL: URL(string: "https://accounts.vandij.ke/api")!,
